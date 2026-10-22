@@ -1,0 +1,73 @@
+# Hyundai R4 (HYLED-50UHDTA) - SCBC/Realtek - Android 11 - Google TV + Android TV hybrid
+# Generado desde mis_paquetes.txt - REVISA y comenta lo que SÍ uses
+
+# ===== GOOGLE TV / ANDROID TV STOCK (launcher será reemplazado) =====
+com.google.android.tvlauncher                    # Stock launcher (Android TV) - CleanYourTV lo reemplaza
+com.google.android.tungsten.setupwraith          # Setup wizard Google TV - OJO: ver nota abajo
+com.google.android.backdrop                      # Ambient mode / screensaver
+com.google.android.tvrecommendations             # Filas de recomendaciones "Descubrir"
+com.google.android.play.games                    # Play Games
+com.google.android.youtube.tvmusic               # YouTube Music
+
+# ===== APPS PREINSTALADAS STREAMING (comenta si usas) =====
+com.amazon.amazonvideo.livingroom                # Prime Video
+com.disney.disneyplus                            # Disney+
+com.netflix.ninja                                # Netflix
+
+# ===== APPS SCBC / FABRICANTE (com.apps.*) - casi todo bloat =====
+com.apps.smartmenu                               # Menú inteligente
+com.apps.smartkey                                # Teclas inteligentes
+com.apps.esticker                                # Stickers
+com.apps.eshow                                   # Show/portal
+com.apps.scast                                   # Screencast
+com.apps.function.gdpr                           # GDPR consent
+com.apps.function.audiolink                      # Audio link
+com.apps.puresound                               # PureSound audio
+com.apps.bluetoothremote                         # Remote Bluetooth
+com.apps.channels                                # Canales
+com.apps.tvsettings                              # TV Settings (duplicado)
+com.apps.atsc                                    # Sintonizador ATSC (US) - deshabilita si no en US
+com.apps.isdb                                    # Sintonizador ISDB (Japón/Brasil) - deshabilita si no
+com.apps.dtv                                     # DTV genérico
+com.apps.atv                                     # ATV analógico
+com.apps.factory.ui                              # UI fábrica
+com.apps.authota                                 # Auth OTA
+com.apps.ota                                     # OTA updates - COMENTA si quieres actualizaciones automáticas
+com.apps.wwalexa                                 # Alexa wrapper
+com.apps.virtualkey                              # Teclado virtual
+com.apps.passthrough                             # Passthrough
+com.apps.livetv                                  # Live TV app (usa com.realtek.* para sintonizador real)
+com.apps.usbmediaplayer                          # Reproductor USB
+com.apps.wifihotspot                             # Hotspot WiFi
+
+# ===== BLOAT DE TERCEROS =====
+com.creative.fastscreen.tv                       # FastScreen mirroring
+com.yablio.sendfilestotv                         # Send Files to TV
+com.cybercat.adbappcontrol.tv                    # ADB App Control (preinstalado?)
+
+# ===== MK (MANUFACTURER) - BLOAT =====
+com.mk.tv.networkspeed                           # Test velocidad red
+com.mk.tv.meeting.service                        # Meeting service
+com.mk.tv.meeting                                # Meeting app
+com.mk.tv.booster                                # "Booster/limpiador" - residente 75MB+
+com.mk.tv.timeclock                              # Reloj
+# com.mk.tv.fivekey                              # Five key remote - COMENTA si fallan botones remoto
+# com.mk.service.tvmidware                       # Middleware TV - KEEP (necesario para sistema)
+
+# ===== REALTEK - CUIDADO: algunos son necesarios para TV/entradas =====
+com.realtek.factorytools                         # Herramientas fábrica
+# com.realtek.leanbacklauncher.partnercustomizer # KEEP - necesario para botón Inputs en launcher stock
+# com.realtek.media.notification                 # Notificaciones media - KEEP
+# com.realtek.keyinterceptserver                 # Intercepta teclas remote - KEEP
+# com.realtek.display.monitor                    # Monitor display - KEEP
+# com.realtek.power                              # Gestión energía - KEEP
+# com.realtek.hw.configprovider                  # Config hardware - KEEP
+# com.realtek.dtmb                               # Sintonizador DTMB (China) - deshabilita si no en China
+
+# ===== GOOGLE SERVICES - KEEP (no tocar) =====
+# com.google.android.gms
+# com.google.android.gsf
+# com.android.vending
+# com.google.android.webview
+# com.google.android.permissioncontroller
+# com.google.android.tts
