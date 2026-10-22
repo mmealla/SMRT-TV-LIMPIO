@@ -107,4 +107,22 @@
     <!-- Cinematic top shelf (cinematic_home): the line under the focused dock app's name; %1$s is when it was
          last opened, e.g. "5 minutes ago" or "yesterday, 9:40 pm". -->
     <string name="last_opened">Last opened %1$s</string>
+
+    <!-- Weather widget -->
+    <string name="weather">Clima</string>
+    <string name="weather_clear">Despejado</string>
+    <string name="weather_partly">Parcialmente nublado</string>
+    <string name="weather_cloudy">Nublado</string>
+    <string name="weather_fog">Neblina</string>
+    <string name="weather_rain">Lluvia</string>
+    <string name="weather_snow">Nieve</string>
+    <string name="weather_thunder">Tormenta</string>
+    <string name="weather_feels">Sensación</string>
+    <string name="weather_range">%1$s  %2$s° / %3$s°</string>
+    <string name="weather_details">Humedad %1$d%%  Viento %2$d km/h</string>
+    <string name="weather_tomorrow">Mañana en %1$s</string>
+    <string name="weather_tomorrow_label">Mañana</string>
+    <string name="weather_tomorrow_detail">%1$s° / %2$s°  %3$d%% lluvia</string>
+    <string name="weather_offline">Sin conexión</string>
+    <string name="weather_auto">Automático (por IP)</string>
 </resources>

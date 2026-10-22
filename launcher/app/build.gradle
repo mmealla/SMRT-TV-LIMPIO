@@ -13,6 +13,10 @@ android {
         targetSdk 34
         versionCode 6
         versionName '2.5'
+        // Personal build for a Spanish-speaking household: translations other than Spanish are left
+        // out, which keeps the APK comfortably under the 440 KB CI gate (the weather widget added
+        // about 13 KB). Drop this line to ship all 24 languages again.
+        resConfigs 'es'
     }
 
     buildTypes {

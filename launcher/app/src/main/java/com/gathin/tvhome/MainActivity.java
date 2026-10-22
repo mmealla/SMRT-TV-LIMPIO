@@ -47,6 +47,7 @@ import android.text.Spanned;
 import android.text.TextPaint;
 import android.text.TextUtils;
 import android.text.style.ForegroundColorSpan;
+import android.util.Log;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.KeyEvent;
@@ -55,6 +56,7 @@ import android.view.SoundEffectConstants;
 import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
 import android.view.Window;
+import android.view.animation.DecelerateInterpolator;
 import android.view.animation.AnimationUtils;
 import android.view.animation.LayoutAnimationController;
 import android.widget.FrameLayout;
@@ -230,6 +232,27 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private boolean libraryFocusPending;
     private RecyclerView.OnScrollListener pendingFocusScroll;
 
+    /** Weather widget */
+    private LinearLayout weatherCard;
+    private ImageView weatherIcon;
+    private TextView weatherPlace, weatherTemp, weatherTodayRange, weatherTomorrow;
+    private Weather.Report weatherReport;
+    private boolean weatherFetching;
+    private long weatherLastFailure;
+    private static final long WEATHER_STALE_MS = 30 * 60_000L;
+    private static final long WEATHER_RETRY_MS = 5 * 60_000L;
+    private final Runnable weatherTick = new Runnable() {
+        @Override
+        public void run() {
+            refreshWeather(false);
+            handler.postDelayed(this, WEATHER_STALE_MS);
+        }
+    };
+    /** Weather widget config (config.xml, overridable by a theme's config.json). */
+    private boolean weatherEnabled;
+    private String weatherCity;
+    private String weatherUnit;
+
     private final Handler handler = new Handler(Looper.getMainLooper());
     /** Refreshes the network pill when the connection changes: at boot Wi-Fi often connects after Home is shown. */
     private final ConnectivityManager.NetworkCallback networkCallback = new ConnectivityManager.NetworkCallback() {
@@ -316,6 +339,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         festive = festival.active(LocalDate.now());
         liveTvPkg = cfg.liveTvPackage;
         idleClockMs = cfg.homeIdleClockMinutes * MINUTE_MS;
+        weatherEnabled = cfg.weatherEnabled;
+        weatherCity = cfg.weatherCity;
+        weatherUnit = cfg.weatherUnit;
         liveTvAction = cfg.liveTvAction;
         inputAction = cfg.inputAction;
         sourcePanelService = cfg.sourcePanelService;
@@ -355,6 +381,15 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         clockBlock = findViewById(R.id.leftBlock);
         greetingColor = greeting.getCurrentTextColor();
         btnWifi = findViewById(R.id.btnWifi);
+        weatherCard = findViewById(R.id.weatherCard);
+        weatherIcon = findViewById(R.id.weatherIcon);
+        weatherPlace = findViewById(R.id.weatherPlace);
+        weatherTemp = findViewById(R.id.weatherTemp);
+        weatherTodayRange = findViewById(R.id.weatherTodayRange);
+        weatherTomorrow = findViewById(R.id.weatherTomorrow);
+        Log.d("TvHome.Weather", "wiring card=" + weatherCard + " place=" + weatherPlace + " temp=" + weatherTemp
+                + " range=" + weatherTodayRange + " tomorrow=" + weatherTomorrow + " enabled=" + weatherEnabled);
+        if (!weatherEnabled) weatherCard.setVisibility(View.GONE);
         shamsiDate = findViewById(R.id.shamsiDate);
         stats = findViewById(R.id.stats);
         raceCalendar = cfg.raceCalendar;
@@ -604,6 +639,98 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     }
 
     /**
+     * Weather widget (weather_enabled): renders the cached report first, then fetches off the main thread
+     * when it is stale (30 min), backing off 5 min after a failure. Never blocks a frame: the fetch runs on
+     * its own thread and posts back through the handler.
+     */
+    private void refreshWeather(boolean force) {
+        if (!weatherEnabled || weatherCard == null) return;
+        long now = System.currentTimeMillis();
+        if (weatherReport == null) {
+            weatherReport = Weather.cached(this);   // instant paint on Home entry; stale, so a fetch follows
+            if (weatherReport != null) showWeather(weatherReport);
+        }
+        if (weatherFetching) return;
+        if (!force && weatherReport != null && !weatherReport.stale(now)) return;
+        if (weatherLastFailure > 0 && now - weatherLastFailure < WEATHER_RETRY_MS) return;
+        weatherFetching = true;
+        final String city = weatherCity;
+        new Thread(() -> {
+            try {
+                Weather.Report fresh = Weather.fetch(getApplicationContext(), city);
+                handler.post(() -> {
+                    weatherFetching = false;
+                    weatherLastFailure = 0;
+                    weatherReport = fresh;
+                    showWeather(fresh);
+                });
+            } catch (Exception e) {
+                // Offline, dead API or a security exception from the OS: whatever it is, weather never
+                // takes Home down; keep what is on screen and try again after WEATHER_RETRY_MS.
+                handler.post(() -> {
+                    weatherFetching = false;
+                    weatherLastFailure = System.currentTimeMillis();
+                });
+            }
+        }, "weather-fetch").start();
+    }
+
+    /** Paints the card from a report: place, temperature, today's label + range, tomorrow's forecast. */
+    private void showWeather(Weather.Report r) {
+        Log.d("TvHome.Weather", "paint place=" + r.place + " temp=" + r.temp + " high=" + r.high
+                + " low=" + r.low + " code=" + r.code + " tHigh=" + r.tomorrowHigh + " tLow=" + r.tomorrowLow);
+        boolean entering = weatherCard.getVisibility() != View.VISIBLE;
+        weatherCard.setVisibility(View.VISIBLE);
+        weatherIcon.setImageResource(Weather.icon(Weather.sky(r.code), r.day));
+        weatherPlace.setText(r.place.isEmpty() ? getString(R.string.weather_auto) : r.place);
+        weatherTemp.setText(weatherDegrees(r.temp) + "\u00b0");
+        try {
+            String range = getString(R.string.weather_range,
+                    getString(Weather.label(Weather.sky(r.code))), weatherDegrees(r.high), weatherDegrees(r.low));
+            String tomorrow = getString(R.string.weather_tomorrow_label) + " \u00b7 "
+                    + getString(R.string.weather_tomorrow_detail,
+                    weatherDegrees(r.tomorrowHigh), weatherDegrees(r.tomorrowLow), r.tomorrowRain);
+            weatherTodayRange.setText(range);
+            weatherTomorrow.setText(tomorrow);
+            Log.d("TvHome.Weather", "range=[" + range + "] vis=" + weatherTodayRange.getVisibility()
+                    + " tomorrow=[" + tomorrow + "]");
+        } catch (RuntimeException e) {
+            // A paint bug must never take Home down; the place and temperature already show.
+            Log.e("TvHome.Weather", "range/tomorrow paint failed", e);
+        }
+        // Post-layout measurement of the two forecast lines (height 0 would mean broken line metrics).
+        weatherTodayRange.post(() -> Log.d("TvHome.Weather", "measure range h=" + weatherTodayRange.getHeight()
+                + " textLen=" + weatherTodayRange.getText().length()
+                + " layout=" + (weatherTodayRange.getLayout() != null)
+                + " fm=" + weatherTodayRange.getPaint().getFontMetricsInt()
+                + " | tomorrow h=" + weatherTomorrow.getHeight()));
+        animateWeatherCard(entering);
+    }
+
+    /** Widget motion: slides up and fades in on the first paint, pulses gently when the data refreshes. */
+    private void animateWeatherCard(boolean entering) {
+        if (!animations || reducedMotion) return;
+        weatherCard.animate().cancel();
+        if (entering) {
+            weatherCard.setAlpha(0f);
+            weatherCard.setTranslationY(14 * density);
+            weatherCard.animate().alpha(1f).translationY(0f).setDuration(340)
+                    .setInterpolator(new DecelerateInterpolator()).start();
+        } else {
+            // A refresh keeps the place and temperature in place; only a soft dip marks the new data.
+            weatherCard.setAlpha(0.45f);
+            weatherCard.animate().alpha(1f).setDuration(260)
+                    .setInterpolator(new DecelerateInterpolator()).start();
+        }
+    }
+
+    /** Degrees in the unit the owner chose (weather_unit: c or f); Open-Meteo always answers in Celsius. */
+    private String weatherDegrees(double celsius) {
+        double v = "f".equalsIgnoreCase(weatherUnit) ? celsius * 9 / 5 + 32 : celsius;
+        return String.format(Locale.US, "%.0f", v);
+    }
+
+    /**
      * Home pressed while Home is already in front: singleTask delivers it here, then onResume runs.
      * Back to the top with the first dock tile focused, like the stock launcher. Back from an app
      * never comes this way, so returning to the app you left from is unchanged (#118).
@@ -673,6 +800,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         sky.update();
         wallpaperPlayer.start();
         handler.postDelayed(minuteTick, MINUTE_MS);
+        if (weatherEnabled) {
+            refreshWeather(false);
+            handler.postDelayed(weatherTick, WEATHER_STALE_MS);
+        }
         if (festive && diya != null) {
             diya.start();
             LocalDate today = LocalDate.now();
@@ -792,6 +923,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         ambient.animate().cancel();
         heroArt.animate().cancel();
         handler.removeCallbacks(minuteTick);
+        handler.removeCallbacks(weatherTick);
         stopStats();
         if (diya != null) diya.stop();
         cancelPendingFocusScroll();

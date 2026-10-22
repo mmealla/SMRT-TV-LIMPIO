@@ -196,4 +196,12 @@
          Live TV window does not keep the screen on (CVTE): there the system screensaver would start in the
          middle of a programme. Can also be set with "home_idle_clock_minutes": 10 in a theme's config.json. -->
     <integer name="home_idle_clock_minutes">0</integer>
+
+    <!-- Weather widget: show current temperature, today's range and tomorrow's forecast.
+         "weather_city": empty = auto-detect by IP (Open-Meteo + ipwho.is/geojs.io), or "City|CountryCode" (e.g. "Buenos Aires|AR").
+         "weather_unit": "c" for Celsius, "f" for Fahrenheit.
+         Can also be set in a theme's config.json: "weather_city": "Buenos Aires|AR", "weather_unit": "c" -->
+    <bool name="weather_enabled">false</bool>
+    <string name="weather_city" translatable="false"></string>
+    <string name="weather_unit" translatable="false">c</string>
 </resources>
