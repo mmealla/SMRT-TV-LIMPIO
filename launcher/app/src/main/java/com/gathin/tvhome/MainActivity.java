@@ -1005,61 +1005,43 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     private Dialog weatherLocationDialog;
 
-    /** Shows the weather location selector dialog. */
+    /** Shows the weather location selector dialog using AlertDialog (robust on TV). */
     private void showWeatherLocationDialog() {
         if (!weatherEnabled) {
             Toast.makeText(this, "Clima deshabilitado", Toast.LENGTH_SHORT).show();
             return;
         }
-        Toast.makeText(this, "Abriendo selector de ubicacion...", Toast.LENGTH_SHORT).show();
-
-        // Use the XML layout
-        weatherLocationDialog = new Dialog(this);
-        weatherLocationDialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
-        weatherLocationDialog.setContentView(R.layout.dialog_weather_place);
-        weatherLocationDialog.getWindow().setLayout(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT);
-        weatherLocationDialog.getWindow().setBackgroundDrawable(new ColorDrawable(0xCC000000));
-
-        // Set up "Automatic" button
-        Button btnAuto = weatherLocationDialog.findViewById(R.id.btnAuto);
-        btnAuto.setOnClickListener(v -> {
-            try {
-                android.content.SharedPreferences p = getSharedPreferences("weather", MODE_PRIVATE);
-                Weather.clearLocationOverride(p);
-                refreshWeather(true);
-                Toast.makeText(this, R.string.weather_location_cleared, Toast.LENGTH_SHORT).show();
-                weatherLocationDialog.dismiss();
-            } catch (Exception e) {
-                Log.e("TvHome.Weather", "clear location failed", e);
-            }
-        });
-
-        // Search field: prompt for a city name and run the geocoding lookup off the main thread.
-        View searchField = weatherLocationDialog.findViewById(R.id.searchField);
-        searchField.setOnClickListener(v -> promptWeatherSearch());
-
-        // Set up preset cities
-        Button btnPreset1 = weatherLocationDialog.findViewById(R.id.btnPreset1);
-        btnPreset1.setOnClickListener(v -> {
-            setWeatherLocation("Madrid, ES", 40.4168, -3.7038, "ES");
-        });
-
-        Button btnPreset2 = weatherLocationDialog.findViewById(R.id.btnPreset2);
-        btnPreset2.setOnClickListener(v -> {
-            setWeatherLocation("Barcelona, ES", 41.3851, 2.1734, "ES");
-        });
-
-        Button btnPreset3 = weatherLocationDialog.findViewById(R.id.btnPreset3);
-        btnPreset3.setOnClickListener(v -> {
-            setWeatherLocation("Valencia, ES", 39.4699, -0.5856, "ES");
-        });
-
-        Button closeDialog = weatherLocationDialog.findViewById(R.id.closeDialog);
-        closeDialog.setOnClickListener(v -> weatherLocationDialog.dismiss());
-
-        weatherLocationDialog.show();
+        final String[] options = {
+                getString(R.string.weather_auto),
+                "Madrid, ES",
+                "Barcelona, ES",
+                "Valencia, ES",
+                getString(R.string.search_city)
+        };
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.search_city)
+                .setItems(options, (d, which) -> {
+                    if (which == 0) {
+                        try {
+                            android.content.SharedPreferences p = getSharedPreferences("weather", MODE_PRIVATE);
+                            Weather.clearLocationOverride(p);
+                            refreshWeather(true);
+                            Toast.makeText(this, R.string.weather_location_cleared, Toast.LENGTH_SHORT).show();
+                        } catch (Exception e) {
+                            Log.e("TvHome.Weather", "clear location failed", e);
+                        }
+                    } else if (which == 1) {
+                        setWeatherLocation("Madrid, ES", 40.4168, -3.7038, "ES");
+                    } else if (which == 2) {
+                        setWeatherLocation("Barcelona, ES", 41.3851, 2.1734, "ES");
+                    } else if (which == 3) {
+                        setWeatherLocation("Valencia, ES", 39.4699, -0.5856, "ES");
+                    } else if (which == 4) {
+                        promptWeatherSearch();
+                    }
+                })
+                .setNegativeButton(R.string.cancel, null)
+                .show();
     }
 
     /** Sets the weather location override and updates the display. */
@@ -1110,29 +1092,23 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     Toast.makeText(this, R.string.weather_location_invalid, Toast.LENGTH_SHORT).show();
                     return;
                 }
-                android.widget.LinearLayout container = weatherLocationDialog == null
-                        ? null : weatherLocationDialog.findViewById(R.id.searchResults);
-                if (container == null) return;
-                // Remove previous dynamic result buttons (keep presets: they are before the container? no, they are inside).
-                // We only clear buttons whose tag is "dyn".
-                for (int i = container.getChildCount() - 1; i >= 0; i--) {
-                    View c = container.getChildAt(i);
-                    if ("dyn".equals(c.getTag())) container.removeViewAt(i);
-                }
                 if (r == null || r.isEmpty()) {
                     Toast.makeText(this, R.string.weather_location_invalid, Toast.LENGTH_SHORT).show();
                     return;
                 }
-                for (final Weather.Hit h : r) {
-                    Button b = new Button(this);
-                    b.setTag("dyn");
-                    b.setText(h.name + (h.region.isEmpty() ? "" : " — " + h.region));
-                    b.setTextSize(16);
-                    b.setFocusable(true);
-                    b.setClickable(true);
-                    b.setOnClickListener(v -> setWeatherLocation(h.name, h.lat, h.lon, h.countryCode));
-                    container.addView(b);
+                final String[] names = new String[r.size()];
+                for (int i = 0; i < r.size(); i++) {
+                    Weather.Hit h = r.get(i);
+                    names[i] = h.name + (h.region.isEmpty() ? "" : " — " + h.region);
                 }
+                new AlertDialog.Builder(this)
+                        .setTitle(R.string.search_city)
+                        .setItems(names, (d, which) -> {
+                            Weather.Hit h = r.get(which);
+                            setWeatherLocation(h.name, h.lat, h.lon, h.countryCode);
+                        })
+                        .setNegativeButton(R.string.cancel, null)
+                        .show();
             });
         }).start();
     }
