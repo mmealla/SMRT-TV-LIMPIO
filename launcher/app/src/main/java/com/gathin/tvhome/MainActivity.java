@@ -1200,6 +1200,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 || event.getKeyCode() == KeyEvent.KEYCODE_NUMPAD_ENTER;
         if (okKey) {
             if (event.getAction() == KeyEvent.ACTION_DOWN) {
+                if (event.getRepeatCount() > 0) {
+                    // key held: don't reset the timer
+                    return true;
+                }
                 if (longPressHandler == null) longPressHandler = new Handler(Looper.getMainLooper());
                 if (longPressRunnable != null) longPressHandler.removeCallbacks(longPressRunnable);
                 longPressFired = false;
