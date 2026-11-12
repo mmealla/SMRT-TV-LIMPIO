@@ -1198,12 +1198,13 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         boolean okKey = event.getKeyCode() == KeyEvent.KEYCODE_DPAD_CENTER
                 || event.getKeyCode() == KeyEvent.KEYCODE_ENTER
                 || event.getKeyCode() == KeyEvent.KEYCODE_NUMPAD_ENTER;
-        if (okKey && !reordering) {
+        if (okKey) {
             if (event.getAction() == KeyEvent.ACTION_DOWN) {
                 if (longPressHandler == null) longPressHandler = new Handler(Looper.getMainLooper());
                 if (longPressRunnable != null) longPressHandler.removeCallbacks(longPressRunnable);
                 longPressFired = false;
                 longPressRunnable = () -> {
+                    if (movingKey != null) return; // carrying a tile: don't rename
                     longPressFired = true;
                     int idx = -1;
                     for (int i = 0; i < (adapter == null ? 0 : adapter.getItemCount()); i++) {
