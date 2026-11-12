@@ -59,12 +59,16 @@ import android.view.Window;
 import android.view.animation.DecelerateInterpolator;
 import android.view.animation.AnimationUtils;
 import android.view.animation.LayoutAnimationController;
+import android.widget.Button;
+import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.PopupWindow;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.app.AlertDialog;
+import android.app.Dialog;
 
 import androidx.annotation.NonNull;
 import androidx.dynamicanimation.animation.DynamicAnimation;
@@ -574,6 +578,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             return true;
         });
 
+        // Weather card: click opens location selector
+        if (weatherEnabled && weatherCard != null) {
+            weatherCard.setOnClickListener(v -> showWeatherLocationDialog());
+        }
+
         // Keep focus on the top bar at its ends and at the top: Android's focus finder would otherwise
         // jump to a tile far below when there is nothing in that direction.
         boolean rtlMenuBar = getResources().getBoolean(R.bool.rtl_menu_bar);
@@ -989,6 +998,186 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
     }
 
+    // ---- weather location selector --------------------------------------------------------------
+
+    private Dialog weatherLocationDialog;
+
+    /** Shows the weather location selector dialog. */
+    private void showWeatherLocationDialog() {
+        if (!weatherEnabled) return;
+
+        // Use the XML layout
+        weatherLocationDialog = new Dialog(this);
+        weatherLocationDialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        weatherLocationDialog.setContentView(R.layout.dialog_weather_place);
+        weatherLocationDialog.getWindow().setLayout(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT);
+        weatherLocationDialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+
+        // Set up "Automatic" button
+        Button btnAuto = weatherLocationDialog.findViewById(R.id.btnAuto);
+        btnAuto.setOnClickListener(v -> {
+            try {
+                android.content.SharedPreferences p = getSharedPreferences("weather", MODE_PRIVATE);
+                Weather.clearLocationOverride(p);
+                refreshWeather(true);
+                Toast.makeText(this, R.string.weather_location_cleared, Toast.LENGTH_SHORT).show();
+                weatherLocationDialog.dismiss();
+            } catch (Exception e) {
+                Log.e("TvHome.Weather", "clear location failed", e);
+            }
+        });
+
+        // Search field: prompt for a city name and run the geocoding lookup off the main thread.
+        View searchField = weatherLocationDialog.findViewById(R.id.searchField);
+        searchField.setOnClickListener(v -> promptWeatherSearch());
+
+        // Set up preset cities
+        Button btnPreset1 = weatherLocationDialog.findViewById(R.id.btnPreset1);
+        btnPreset1.setOnClickListener(v -> {
+            setWeatherLocation("Madrid, ES", 40.4168, -3.7038, "ES");
+        });
+
+        Button btnPreset2 = weatherLocationDialog.findViewById(R.id.btnPreset2);
+        btnPreset2.setOnClickListener(v -> {
+            setWeatherLocation("Barcelona, ES", 41.3851, 2.1734, "ES");
+        });
+
+        Button btnPreset3 = weatherLocationDialog.findViewById(R.id.btnPreset3);
+        btnPreset3.setOnClickListener(v -> {
+            setWeatherLocation("Valencia, ES", 39.4699, -0.5856, "ES");
+        });
+
+        Button closeDialog = weatherLocationDialog.findViewById(R.id.closeDialog);
+        closeDialog.setOnClickListener(v -> weatherLocationDialog.dismiss());
+
+        weatherLocationDialog.show();
+    }
+
+    /** Sets the weather location override and updates the display. */
+    private void setWeatherLocation(String name, double lat, double lon, String countryCode) {
+        try {
+            android.content.SharedPreferences p = getSharedPreferences("weather", MODE_PRIVATE);
+            Weather.setLocationOverride(p, name, lat, lon, countryCode);
+            refreshWeather(true);
+            Toast.makeText(this, R.string.weather_location_set, Toast.LENGTH_SHORT).show();
+            if (weatherLocationDialog != null) weatherLocationDialog.dismiss();
+        } catch (Exception e) {
+            Log.e("TvHome.Weather", "set location failed", e);
+        }
+    }
+
+    /** Prompts for a city name and runs the geocoding search on a background thread. */
+    private void promptWeatherSearch() {
+        final android.widget.EditText input = new android.widget.EditText(this);
+        input.setHint(R.string.search_hint);
+        input.setSingleLine(true);
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.search_city)
+                .setView(input)
+                .setPositiveButton(R.string.save, (d, w) -> {
+                    String q = input.getText() == null ? "" : input.getText().toString().trim();
+                    if (q.isEmpty()) return;
+                    runWeatherSearch(q);
+                })
+                .setNegativeButton(R.string.cancel, null)
+                .show();
+    }
+
+    /** Runs Weather.search off the main thread and renders results into the dialog. */
+    private void runWeatherSearch(final String query) {
+        new Thread(() -> {
+            java.util.List<Weather.Hit> results = null;
+            Exception err = null;
+            try {
+                results = Weather.search(query, "es");
+            } catch (Exception e) {
+                err = e;
+            }
+            final java.util.List<Weather.Hit> r = results;
+            final Exception e = err;
+            new Handler(Looper.getMainLooper()).post(() -> {
+                if (e != null) {
+                    Log.e("TvHome.Weather", "search failed", e);
+                    Toast.makeText(this, R.string.weather_location_invalid, Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                android.widget.LinearLayout container = weatherLocationDialog == null
+                        ? null : weatherLocationDialog.findViewById(R.id.searchResults);
+                if (container == null) return;
+                // Remove previous dynamic result buttons (keep presets: they are before the container? no, they are inside).
+                // We only clear buttons whose tag is "dyn".
+                for (int i = container.getChildCount() - 1; i >= 0; i--) {
+                    View c = container.getChildAt(i);
+                    if ("dyn".equals(c.getTag())) container.removeViewAt(i);
+                }
+                if (r == null || r.isEmpty()) {
+                    Toast.makeText(this, R.string.weather_location_invalid, Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                for (final Weather.Hit h : r) {
+                    Button b = new Button(this);
+                    b.setTag("dyn");
+                    b.setText(h.name + (h.region.isEmpty() ? "" : " — " + h.region));
+                    b.setTextSize(16);
+                    b.setFocusable(true);
+                    b.setClickable(true);
+                    b.setOnClickListener(v -> setWeatherLocation(h.name, h.lat, h.lon, h.countryCode));
+                    container.addView(b);
+                }
+            });
+        }).start();
+    }
+
+    /** Shows the long-press menu (Rename / Restore / App info) for the focused app. */
+    private void showAppMenu(String pkg) {
+        if (pkg == null) return;
+        final String[] items = { getString(R.string.rename_app), getString(R.string.library_app_info), getString(R.string.cancel) };
+        new AlertDialog.Builder(this)
+                .setTitle(pkg)
+                .setItems(items, (d, which) -> {
+                    if (which == 0) showRenameDialog(pkg);
+                    else if (which == 1) {
+                        try {
+                            startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                                    Uri.parse("package:" + pkg)));
+                        } catch (Exception e) {
+                            Log.e("TvHome", "app info failed", e);
+                        }
+                    }
+                })
+                .show();
+    }
+
+    /** Shows the rename dialog for an app package. */
+    private void showRenameDialog(String pkg) {
+        if (pkg == null) return;
+        Dialog dlg = new Dialog(this);
+        dlg.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        dlg.setContentView(R.layout.dialog_app_rename);
+        dlg.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        dlg.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+
+        EditText input = dlg.findViewById(R.id.appRenameInput);
+        String current = getSharedPreferences("weather", MODE_PRIVATE).getString("app_name_override_" + pkg, "");
+        if (current != null && !current.isEmpty()) input.setText(current);
+
+        dlg.findViewById(R.id.btnCancelRename).setOnClickListener(v -> dlg.dismiss());
+        dlg.findViewById(R.id.btnSaveRename).setOnClickListener(v -> {
+            String name = input.getText() == null ? "" : input.getText().toString().trim();
+            if (name.isEmpty()) {
+                Toast.makeText(this, R.string.invalid_name, Toast.LENGTH_SHORT).show();
+                return;
+            }
+            adapter.setOverride(pkg, name);
+            reloadTiles();
+            Toast.makeText(this, R.string.name_saved, Toast.LENGTH_SHORT).show();
+            dlg.dismiss();
+        });
+        dlg.show();
+    }
+
     /**
      * A Settings button sent as a keycode (settings_key_keycodes, e.g. 83 on TCL Google TV remotes) opens the same
      * thing HomeKeyService would. While that service runs it consumes the key first; without it (not enabled,
@@ -1022,6 +1211,24 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
         if (handleSettingsKey(event)) return true;
+        if (event.getAction() == KeyEvent.ACTION_DOWN
+                && event.getKeyCode() == KeyEvent.KEYCODE_MENU
+                && !reordering && weatherEnabled) {
+            int pos = grid == null ? -1 : ((GridLayoutManager) grid.getLayoutManager()).findFirstVisibleItemPosition();
+            // use focused child's position
+            View focused = getCurrentFocus();
+            if (focused != null) {
+                // find position via adapter
+            }
+            String pkg = lastFocusedKey == null ? null : null;
+            // resolve package from adapter by searching lastFocused index
+            int idx = -1;
+            for (int i = 0; i < (adapter == null ? 0 : adapter.getItemCount()); i++) {
+                if (lastFocusedKey != null && lastFocusedKey.equals(adapter.keyAt(i))) { idx = i; break; }
+            }
+            String p = idx >= 0 ? adapter.packageAt(idx) : null;
+            if (p != null) { showAppMenu(p); return true; }
+        }
         if (!reordering) return super.dispatchKeyEvent(event);
         if (dockEditing) return dispatchDockEdit(event);
         boolean down = event.getAction() == KeyEvent.ACTION_DOWN;

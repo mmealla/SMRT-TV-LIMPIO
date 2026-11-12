@@ -523,6 +523,11 @@ final class Config {
         return out;
     }
 
+    /** App-name overrides encoded the same way as app_labels ("package=name"); later entry wins. */
+    static Map<String, String> appOverrides(List<String> entries) {
+        return packageMap(entries);
+    }
+
     private static List<String> stringList(JSONObject o, String key, List<String> fallback) {
         Object v = o.opt(key);
         if (!(v instanceof JSONArray)) return fallback;

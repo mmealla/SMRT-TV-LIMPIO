@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Glass overlay for app tiles: diagonal gradient with highlight edge -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Top edge highlight: white transparent gradient -->
+    <item android:gravity="top">
+        <shape android:shape="rectangle">
+            <gradient
+                android:startColor="#33FFFFFF"
+                android:centerColor="#00FFFFFF"
+                android:angle="45"
+                android:type="linear" />
+            <size android:height="30dp" />
+        </shape>
+    </item>
+
+    <!-- Main glass layer: diagonal translucent gradient -->
+    <item android:gravity="fill">
+        <shape android:shape="rectangle">
+            <gradient
+                android:startColor="#00FFFFFF"
+                android:centerColor="#22FFFFFF"
+                android:endColor="#11FFFFFF"
+                android:angle="45" />
+            <corners android:radius="16dp" />
+        </shape>
+    </item>
+
+    <!-- Outer light border -->
+    <item>
+        <shape android:shape="rectangle">
+            <stroke android:width="1dp" android:color="#33FFFFFF" />
+            <corners android:radius="16dp" />
+        </shape>
+    </item>
+
+</layer-list>

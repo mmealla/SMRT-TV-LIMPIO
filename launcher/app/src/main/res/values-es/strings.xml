@@ -100,4 +100,23 @@
     <string name="race_live">%1$s · en directo</string>
     <string name="race_finished">Bandera a cuadros</string>
     <string name="last_opened">Abierta por última vez %1$s</string>
+
+    <!-- Weather location selector -->
+    <string name="search_city">Buscar ciudad</string>
+    <string name="search_hint">Escribe el nombre de una ciudad</string>
+    <string name="preset_cities">Ciudades predefinidas</string>
+    <string name="weather_location_set">Ubicación fijada</string>
+    <string name="weather_location_cleared">Ubicación borrada</string>
+    <string name="weather_location_invalid">Ubicación inválida</string>
+
+    <!-- App rename -->
+    <string name="rename_app">Renombrar app</string>
+    <string name="enter_name">Nombre de la app</string>
+    <string name="save">Guardar</string>
+    <string name="cancel">Cancelar</string>
+    <string name="invalid_name">Nombre inválido</string>
+    <string name="name_saved">Nombre guardado</string>
+
+    <string name="ic_search">✎</string>
+    <string name="ic_check">✓</string>
 </resources>

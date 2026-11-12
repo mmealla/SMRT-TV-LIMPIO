@@ -1,0 +1,191 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Dialog for selecting weather location: automatic (IP) or manual search -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_margin="32dp"
+    android:orientation="vertical"
+    android:background="@drawable/weather_card_bg">
+
+    <!-- Header: Automatic option -->
+    <LinearLayout
+        android:id="@+id/btnAuto"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:padding="16dp"
+        android:focusable="true"
+        android:clickable="true"
+        android:nextFocusDown="@id/btnPreset1"
+        android:background="?android:attr/selectableItemBackground">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical"
+            android:layout_marginEnd="16dp"
+            android:text="@drawable/ic_check"
+            android:textSize="24sp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/weather_auto"
+            android:textSize="18sp"
+            android:fontFamily="@font/outfit_medium"
+            android:textColor="#FFFFFFFF" />
+
+        <TextView
+            android:id="@+id/autoStatus"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical"
+            android:layout_marginStart="8dp"
+            android:text="(actual)"
+            android:textSize="14sp"
+            android:fontFamily="@font/outfit_light"
+            android:textColor="#B3FFFFFF" />
+    </LinearLayout>
+
+    <!-- Title -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:text="@string/search_city"
+        android:textSize="14sp"
+        android:fontFamily="@font/outfit_light"
+        android:textColor="#99FFFFFF"
+        android:layout_marginBottom="8dp" />
+
+    <!-- Search field (D-pad navigable, but no IME - TV remote) -->
+    <LinearLayout
+        android:id="@+id/searchField"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:padding="12dp"
+        android:background="@drawable/settings_choice_bg"
+        android:focusable="true"
+        android:clickable="true"
+        android:nextFocusDown="@id/searchResults"
+        android:nextFocusUp="@id/btnAuto">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@drawable/ic_search"
+            android:textSize="20sp" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="12dp"
+            android:text="@string/search_hint"
+            android:textSize="16sp"
+            android:fontFamily="@font/outfit_light"
+            android:textColor="#B3FFFFFF" />
+    </LinearLayout>
+
+    <!-- Search results container (predefined cities for TV) -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:layout_marginStart="16dp"
+        android:text="@string/preset_cities"
+        android:textSize="14sp"
+        android:fontFamily="@font/outfit_light"
+        android:textColor="#99FFFFFF" />
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:fadeScrollbars="false">
+
+        <LinearLayout
+            android:id="@+id/searchResults"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginBottom="16dp">
+
+            <!-- Preset cities: D-pad navigable, one per row -->
+            <Button
+                android:id="@+id/btnPreset1"
+                style="?android:attr/borderlessButtonStyle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginVertical="4dp"
+                android:text="Madrid, ES"
+                android:textSize="16sp"
+                android:fontFamily="@font/outfit_light"
+                android:textColor="#FFFFFFFF"
+                android:background="?android:attr/selectableItemBackground"
+                android:focusable="true"
+                android:clickable="true"
+                android:nextFocusDown="@id/btnPreset2"
+                android:nextFocusUp="@id/searchField" />
+
+            <Button
+                android:id="@+id/btnPreset2"
+                style="?android:attr/borderlessButtonStyle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginVertical="4dp"
+                android:text="Barcelona, ES"
+                android:textSize="16sp"
+                android:fontFamily="@font/outfit_light"
+                android:textColor="#FFFFFFFF"
+                android:background="?android:attr/selectableItemBackground"
+                android:focusable="true"
+                android:clickable="true"
+                android:nextFocusDown="@id/btnPreset3"
+                android:nextFocusUp="@id/btnPreset1" />
+
+            <Button
+                android:id="@+id/btnPreset3"
+                style="?android:attr/borderlessButtonStyle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginVertical="4dp"
+                android:text="Valencia, ES"
+                android:textSize="16sp"
+                android:fontFamily="@font/outfit_light"
+                android:textColor="#FFFFFFFF"
+                android:background="?android:attr/selectableItemBackground"
+                android:focusable="true"
+                android:clickable="true"
+                android:nextFocusDown="@id/closeDialog"
+                android:nextFocusUp="@id/btnPreset2" />
+
+            <Button
+                android:id="@+id/closeDialog"
+                style="?android:attr/borderlessButtonStyle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginVertical="4dp"
+                android:text="Cerrar"
+                android:textSize="16sp"
+                android:fontFamily="@font/outfit_light"
+                android:textColor="#FFFFFFFF"
+                android:background="?android:attr/selectableItemBackground"
+                android:focusable="true"
+                android:clickable="true"
+                android:nextFocusDown="@id/btnAuto"
+                android:nextFocusUp="@id/btnPreset3" />
+
+        </LinearLayout>
+    </ScrollView>
+
+</LinearLayout>

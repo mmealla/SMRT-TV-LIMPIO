@@ -490,6 +490,14 @@ final class Cards {
         return out.isEmpty() ? fallback : out;
     }
 
+    /** Resolve the visible app label: user override > theme label > app label > card label. */
+    static String resolveAppLabel(String override, String themeLabel, String appLabel, String cardLabel) {
+        if (override != null && !override.trim().isEmpty()) return override;
+        if (themeLabel != null && !themeLabel.trim().isEmpty()) return themeLabel;
+        if (appLabel != null && !appLabel.trim().isEmpty()) return appLabel;
+        return cardLabel;
+    }
+
     /**
      * A compiled `@string/x` or `?attr/x` reference: the resource compiler stores it as an id and the
      * parser hands back "@2131..." or "?2130...". Spec 1 takes literal text only.

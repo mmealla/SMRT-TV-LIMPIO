@@ -125,4 +125,22 @@
     <string name="weather_tomorrow_detail">%1$s° / %2$s°  %3$d%% lluvia</string>
     <string name="weather_offline">Sin conexión</string>
     <string name="weather_auto">Automático (por IP)</string>
+
+    <!-- Weather location selector -->
+    <string name="search_city">Buscar ciudad</string>
+    <string name="search_hint">Escribe el nombre de una ciudad</string>
+    <string name="preset_cities">Ciudades predefinidas</string>
+    <string name="weather_location_set">Ubicación fijada</string>
+    <string name="weather_location_cleared">Ubicación borrada</string>
+    <string name="weather_location_invalid">Ubicación inválida</string>
+
+    <!-- App rename -->
+    <string name="rename_app">Rename app</string>
+    <string name="enter_name">App name</string>
+    <string name="save">Save</string>
+    <string name="cancel">Cancel</string>
+    <string name="invalid_name">Invalid name</string>
+    <string name="name_saved">Name saved</string>
+    <string name="ic_search">✎</string>
+    <string name="ic_check">✓</string>
 </resources>

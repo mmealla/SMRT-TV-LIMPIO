@@ -14,6 +14,9 @@ import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Locale;
 
 /**
@@ -132,10 +135,22 @@ final class Weather {
     /**
      * Off the main thread: the place for city (empty = IP geolocation), looked up at most once a day.
      * Shared by weather widget.
+     * Priority order: manually fixed override > config.json weather_city > IP geolocation.
      */
     static Place place(Context context, String city) throws IOException, JSONException {
         SharedPreferences p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
         String lang = Locale.getDefault().getLanguage(); // "es" for Spanish
+
+        // Check for manual override first
+        String fixedLoc = p.getString("place_fixed", "");
+        if (!fixedLoc.isEmpty()) {
+            double[] coords = parseLocation(fixedLoc);
+            if (coords != null) {
+                String name = p.getString("place_fixed_name", "");
+                return new Place(name.isEmpty() ? "Unknown" : name, coords[0], coords[1]);
+            }
+        }
+
         long now = System.currentTimeMillis();
         String placeKey = city + "|" + lang;
         if (!placeKey.equals(p.getString("place_key", null)) || now - p.getLong("place_at", 0) > PLACE_MS
@@ -219,6 +234,98 @@ final class Weather {
             }
         }
         throw new IOException("no place called " + city);
+    }
+
+    /** Result of a city search from geocoding API. */
+    static final class Hit {
+        public final String name;
+        public final String region;
+        public final String country;
+        public final double lat;
+        public final double lon;
+        public final String countryCode;
+
+        Hit(String name, String region, String country, double lat, double lon, String countryCode) {
+            this.name = name;
+            this.region = region;
+            this.country = country;
+            this.lat = lat;
+            this.lon = lon;
+            this.countryCode = countryCode;
+        }
+    }
+
+    /** Busqueda de ciudades por nombre usando Open-Meteo geocoding. Devuelve lista limitada a 10 resultados. */
+    static List<Hit> search(String query, String lang) throws IOException, JSONException {
+        if (query == null || query.isEmpty()) return Collections.emptyList();
+        JSONObject g = get("https://geocoding-api.open-meteo.com/v1/search?count=10&language=" + lang
+                + "&name=" + URLEncoder.encode(query, "UTF-8"));
+        JSONArray results = g.optJSONArray("results");
+        List<Hit> hits = new ArrayList<>(10);
+        if (results != null) {
+            for (int i = 0; i < results.length() && i < 10; i++) {
+                JSONObject r = results.getJSONObject(i);
+                String reg = r.optString("admin1", "");
+                String ctry = r.optString("country", "");
+                String ctryCc = r.optString("country_code", "");
+                hits.add(new Hit(
+                        r.getString("name"),
+                        reg.isEmpty() ? ctry : reg + ", " + ctry,
+                        ctry,
+                        r.getDouble("latitude"),
+                        r.getDouble("longitude"),
+                        ctryCc
+                ));
+            }
+        }
+        return hits;
+    }
+
+    /** Check if manual location override is set. */
+    static boolean hasLocationOverride(SharedPreferences p) {
+        return p.contains("place_fixed");
+    }
+
+    /** Get manual location override string "lat,lng" or empty if not set. */
+    static String getLocationOverride(SharedPreferences p) {
+        return p.getString("place_fixed", "");
+    }
+
+    /** Set manual location override, invalidating the 24h place cache. */
+    static void setLocationOverride(SharedPreferences p, String name, double lat, double lon, String countryCode) {
+        if (lat < -90 || lat > 90 || lon < -180 || lon > 180) return;
+        p.edit()
+                .putString("place_fixed", String.format(Locale.US, "%.6f,%.6f", lat, lon))
+                .putString("place_fixed_name", name)
+                .putString("place_fixed_cc", countryCode)
+                .remove("place_key")
+                .remove("place_at")
+                .remove("place_name")
+                .apply();
+    }
+
+    /** Clear manual location override, invalidating the 24h place cache. */
+    static void clearLocationOverride(SharedPreferences p) {
+        p.edit()
+                .remove("place_fixed")
+                .remove("place_fixed_name")
+                .remove("place_fixed_cc")
+                .remove("place_key")
+                .remove("place_at")
+                .remove("place_name")
+                .apply();
+    }
+
+    /** Parse "lat,lng" string into coordinates array [lat, lng]. */
+    static double[] parseLocation(String loc) {
+        if (loc == null || loc.isEmpty()) return null;
+        try {
+            String[] parts = loc.split(",");
+            if (parts.length == 2) {
+                return new double[]{Double.parseDouble(parts[0]), Double.parseDouble(parts[1])};
+            }
+        } catch (NumberFormatException ignored) {}
+        return null;
     }
 
     static JSONObject get(String url) throws IOException, JSONException {

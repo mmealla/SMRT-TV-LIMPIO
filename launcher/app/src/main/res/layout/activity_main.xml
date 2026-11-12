@@ -342,7 +342,7 @@
                     style="@style/TopButton"
                     android:text="@string/settings"
                     android:drawableStart="@drawable/ic_settings"
-                    android:nextFocusDown="@+id/grid" />
+                    android:nextFocusDown="@id/weatherCard" />
             </LinearLayout>
 
             <!-- Weather card: under the top-buttons row (Entradas/Ethernet/arrows/apps/Ajustes), right-aligned -->
@@ -361,7 +361,11 @@
                 android:paddingBottom="10dp"
                 android:background="@drawable/weather_card_bg"
                 android:clipToPadding="false"
-                android:visibility="gone">
+                android:visibility="gone"
+                android:focusable="true"
+                android:clickable="true"
+                android:nextFocusUp="@+id/btnSettings"
+                android:nextFocusDown="@id/grid">
 
                 <!-- Location and current temp -->
                 <LinearLayout

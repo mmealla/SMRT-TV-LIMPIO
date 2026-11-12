@@ -28,6 +28,7 @@ import android.view.animation.OvershootInterpolator;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.content.SharedPreferences;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
@@ -198,12 +199,14 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     private final Map<String, String> launchActions;
     /** Tile names and bundled banners that replace the app's own (config.xml, app_labels and app_banners). */
     private final Map<String, String> appLabels, appBanners;
+    private final SharedPreferences prefs;
     private final List<Entry> items = new ArrayList<>();
 
     AppAdapter(Context ctx, TileListener listener, int dockSize, Config cfg) {
         this.ctx = ctx;
         this.listener = listener;
         this.dockSize = dockSize;
+        this.prefs = ctx.getSharedPreferences("launcher_settings", Context.MODE_PRIVATE);
         this.favourites = cfg.dockApps;
         this.fillDock = cfg.fillDock;
         this.hidden = new HashSet<>(cfg.hiddenApps);
@@ -263,8 +266,12 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             if (card != null && !card.component.equals(component)) continue;   // the card stands in for this tile
             // Same cleaner as the card prompt: an app label with a bidi override or line separator must not
             // redraw the tile name as something else (#117).
-            String label = card != null ? card.label : Cards.cleanLabel(
-                    appLabels.containsKey(pkg) ? appLabels.get(pkg) : String.valueOf(ri.loadLabel(pm)), pkg);
+            String themeLabel = appLabels.containsKey(pkg) ? appLabels.get(pkg) : null;
+            String rawAppLabel = card != null ? card.label : String.valueOf(ri.loadLabel(pm));
+            // Apply user override (persistent via SharedPreferences) on top of theme/app/card label.
+            String overrideName = this.prefs.getString("app_name_override_" + pkg, "");
+            String resolved = Cards.resolveAppLabel(overrideName, themeLabel, rawAppLabel, card != null ? card.label : null);
+            String label = Cards.cleanLabel(resolved, pkg);
             if (!seen.add(pkg + '\n' + label)) continue;
             Drawable banner = bundledBanner(appBanners.get(pkg));
             if (banner == null) banner = loadBanner(pm, ri);
@@ -545,6 +552,19 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         return position >= 0 && position < items.size() ? items.get(position).component.flattenToShortString() : null;
     }
 
+    /** Persist a user override for an app's visible name. */
+    public void setOverride(String pkg, String name) {
+        if (pkg == null) return;
+        String clean = Cards.cleanLabel(name, pkg);
+        prefs.edit().putString("app_name_override_" + pkg, clean).apply();
+    }
+
+    /** Remove a user override for an app's visible name. */
+    public void clearOverride(String pkg) {
+        if (pkg == null) return;
+        prefs.edit().remove("app_name_override_" + pkg).apply();
+    }
+
     /** Position of the app with this key, or -1 when it is gone. */
     int positionOf(String key) {
         if (key == null) return -1;
@@ -568,7 +588,7 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         return position >= 0 && position < items.size() ? items.get(position).label : "";
     }
 
-    String packageAt(int position) {
+    public String packageAt(int position) {
         return position >= 0 && position < items.size() ? items.get(position).pkg : null;
     }
 
