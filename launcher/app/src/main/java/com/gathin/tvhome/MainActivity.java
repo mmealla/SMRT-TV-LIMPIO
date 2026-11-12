@@ -182,6 +182,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private static int lastFocused = 0;
     /** App of the last focused tile, so focus follows it when the app list changes. */
     private static String lastFocusedKey;
+    private Handler longPressHandler;
+    private Runnable longPressRunnable;
+    private boolean longPressFired;
     private float density;
     /** Module cards (res/values/config.xml, module_cards): discovered on resume, shown only after the owner's Show. */
     private boolean moduleCards;
@@ -1004,7 +1007,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     /** Shows the weather location selector dialog. */
     private void showWeatherLocationDialog() {
-        if (!weatherEnabled) return;
+        if (!weatherEnabled) {
+            Toast.makeText(this, "Clima deshabilitado", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        Toast.makeText(this, "Abriendo selector de ubicacion...", Toast.LENGTH_SHORT).show();
 
         // Use the XML layout
         weatherLocationDialog = new Dialog(this);
@@ -1013,7 +1020,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         weatherLocationDialog.getWindow().setLayout(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT);
-        weatherLocationDialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        weatherLocationDialog.getWindow().setBackgroundDrawable(new ColorDrawable(0xCC000000));
 
         // Set up "Automatic" button
         Button btnAuto = weatherLocationDialog.findViewById(R.id.btnAuto);
@@ -1211,23 +1218,32 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
         if (handleSettingsKey(event)) return true;
-        if (event.getAction() == KeyEvent.ACTION_DOWN
-                && event.getKeyCode() == KeyEvent.KEYCODE_MENU
-                && !reordering && weatherEnabled) {
-            int pos = grid == null ? -1 : ((GridLayoutManager) grid.getLayoutManager()).findFirstVisibleItemPosition();
-            // use focused child's position
-            View focused = getCurrentFocus();
-            if (focused != null) {
-                // find position via adapter
+        // Long-press on OK over a tile opens the rename/info menu.
+        boolean okKey = event.getKeyCode() == KeyEvent.KEYCODE_DPAD_CENTER
+                || event.getKeyCode() == KeyEvent.KEYCODE_ENTER
+                || event.getKeyCode() == KeyEvent.KEYCODE_NUMPAD_ENTER;
+        if (okKey && !reordering) {
+            if (event.getAction() == KeyEvent.ACTION_DOWN) {
+                if (longPressHandler == null) longPressHandler = new Handler(Looper.getMainLooper());
+                if (longPressRunnable != null) longPressHandler.removeCallbacks(longPressRunnable);
+                longPressFired = false;
+                longPressRunnable = () -> {
+                    longPressFired = true;
+                    int idx = -1;
+                    for (int i = 0; i < (adapter == null ? 0 : adapter.getItemCount()); i++) {
+                        if (lastFocusedKey != null && lastFocusedKey.equals(adapter.keyAt(i))) { idx = i; break; }
+                    }
+                    String p = idx >= 0 ? adapter.packageAt(idx) : null;
+                    if (p != null) showAppMenu(p);
+                };
+                longPressHandler.postDelayed(longPressRunnable, 700);
+            } else if (event.getAction() == KeyEvent.ACTION_UP) {
+                if (longPressRunnable != null && longPressHandler != null) longPressHandler.removeCallbacks(longPressRunnable);
+                if (longPressFired) {
+                    longPressFired = false;
+                    return true; // consume: menu already shown
+                }
             }
-            String pkg = lastFocusedKey == null ? null : null;
-            // resolve package from adapter by searching lastFocused index
-            int idx = -1;
-            for (int i = 0; i < (adapter == null ? 0 : adapter.getItemCount()); i++) {
-                if (lastFocusedKey != null && lastFocusedKey.equals(adapter.keyAt(i))) { idx = i; break; }
-            }
-            String p = idx >= 0 ? adapter.packageAt(idx) : null;
-            if (p != null) { showAppMenu(p); return true; }
         }
         if (!reordering) return super.dispatchKeyEvent(event);
         if (dockEditing) return dispatchDockEdit(event);
